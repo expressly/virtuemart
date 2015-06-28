@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="component" version="0.0.1" method="upgrade">
+    <name>Expressly</name>
+    <installfile>install.expressly.php</installfile>
+    <uninstallfile>uninstall.expressly.php</uninstallfile>
+    <!-- The following elements are optional and free of formatting conttraints -->
+    <creationDate>2015-6-22</creationDate>
+    <author>Expressly</author>
+    <authorEmail>info@expressly.com</authorEmail>
+    <authorUrl>http://buyexpressly.com</authorUrl>
+    <copyright>BuyExpressly (c)</copyright>
+    <license></license>
+    <!--  The version string is recorded in the components table -->
+    <version>0.0.1</version>
+    <!-- The description is optional and defaults to the name -->
+    <description><![CDATA[
+	Expressly migration component
+	]]></description>
+
+    <!-- Site Main File Copy Section -->
+    <!-- Note the folder attribute: This attribute describes the folder
+    to copy FROM in the package to install therefore files copied
+    in this section are copied from /site/ in the package -->
+    <files folder="site">
+        <filename>expressly.php</filename>
+    </files>
+    <files folder="/">
+        <folder>assets</folder>
+        <folder>config</folder>
+        <folder>controllers</folder>
+        <folder>vendor</folder>
+        <folder>views</folder>
+    </files>
+    
+    <installfile>expressly.php</installfile>
+    <scriptfile>vendor/autoload.php</scriptfile>
+    <administration></administration>
+</extension>

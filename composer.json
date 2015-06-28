@@ -1,0 +1,19 @@
+{
+    "name": "expressly/virtuemart",
+    "description": "Expressly virtuemart Module",
+    "authors": [
+        {
+            "name": "expressly",
+            "email": "info@buyexpressly.com"
+        }
+    ],
+    "require": {
+        "expressly/php-common": "1.0.10"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/expressly/php-common"
+        }
+    ]
+}
