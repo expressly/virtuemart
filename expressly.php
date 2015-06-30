@@ -59,17 +59,17 @@ if (!class_exists('VM_Expressly')) :
                     break;
 
                 case 'customer/show': {
-                    $this->retrieveUserByEmail(get_query_var('email'));
+                    $this->retrieveUserByEmail($jinput->get('email'));
                 }
                     break;
 
                 case "customer/migrate": {
-                    $this->migratecomplete(get_query_var('uuid'));
+                    $this->migratecomplete($jinput->get('uuid'));
                 }
                     break;
 
                 case "customer/popup": {
-                    $this->migratestart(get_query_var('uuid'));
+                    $this->migratestart($jinput->get('uuid'));
                 }
                     break;
 
@@ -131,8 +131,7 @@ if (!class_exists('VM_Expressly')) :
                     $model = VmModel::getModel('user');
                     $data_to_save = array(
                         ["name"]      => $customer['firstName'] . ' ' . $customer['lastName'],
-                        //TODO : real username ;; need to ask sam to know what to do
-                        ["username"]  => $customer['lastName'],
+                        ["username"]  => $email,
                         ["password1"] => $password,
                         ["password2"] =>
                             $password,
@@ -162,36 +161,42 @@ if (!class_exists('VM_Expressly')) :
                                 : null) : null;
 
                         $model->storeAddress($address);
-                        if (null !== $phone) {
-                            update_user_meta($user_id, $prefix . '_phone', $phone['number']);
-                        }
 
-                        $iso2 = $countryCodeProvider->getIso2($address['country']);
-
-                        update_user_meta($user_id, $prefix . '_state', $address['stateProvince']);
-                        update_user_meta($user_id, $prefix . '_country', $iso2);
                     }
                 } else {
-                    $user = $user = JFactory::getUser($user_id);
+                    $user = JFactory::getUser($user_id);
                 }
 
                 // Forcefully log user in
-                wp_set_auth_cookie($user_id);
+                $app = JFactory::getApplication();
+                $app->triggerEvent('onUserLogin', array((array)$user, $options));
 
                 // Add items (product/coupon) to cart
                 if (!empty($json['cart'])) {
 
                     if (!empty($json['cart']['productId'])) {
-                        WC()->cart->add_to_cart($json['cart']['productId']);
+                        if (!class_exists('VirtueMartCart')) {
+                            require(VMPATH_SITE . DS . 'helpers' . DS . 'cart.php');
+                        }
+                        $cart = VirtueMartCart::getCart();
+
+                        $cart->add($json['cart']['productId'], false);
+
+
                     }
 
                     if (!empty($json['cart']['couponCode'])) {
-                        WC()->cart->add_discount(sanitize_text_field($json['cart']['couponCode']));
+                        $cart->setCouponCode($json['cart']['couponCode']);
                     }
                 }
 
                 // Dispatch password creation email
+                $config = JFactory::getConfig();
                 wp_mail($email, 'Welcome!', 'Your Password: ' . $password);
+                $data['fromname']	= $config->get('fromname');
+		$data['mailfrom']	= $config->get('mailfrom');
+		$data['sitename']	= $config->get('sitename');
+		$data['siteurl']	= JUri::root();
             } catch (\Exception $e) {
                 // TODO: Log
             }
