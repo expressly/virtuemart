@@ -11,8 +11,7 @@ if (!class_exists('VM_Expressly')) :
     /**
      *
      */
-    class VM_Expressly extends JControllerLegacy
-    {
+    class VM_Expressly extends JControllerLegacy {
 
         /**
          * @var Silex\Application
@@ -27,8 +26,7 @@ if (!class_exists('VM_Expressly')) :
         /**
          * Construct the plugin.
          */
-        public function __construct()
-        {
+        public function __construct() {
             // ===== Set app, dispatcher & merchant ===== //
             $client = new Expressly\Client();
             $app = $client->getApp();
@@ -45,8 +43,7 @@ if (!class_exists('VM_Expressly')) :
         /**
          *
          */
-        public function template_redirect()
-        {
+        public function template_redirect() {
             // Get Expressly API call
             $jinput = JFactory::getApplication()->input;
             $__xly = $jinput->get('__xly');
@@ -54,30 +51,29 @@ if (!class_exists('VM_Expressly')) :
             switch ($__xly):
 
                 case 'utility/ping': {
-                    $this->ping();
-                }
+                        $this->ping();
+                    }
                     break;
 
                 case 'customer/show': {
-                    $this->retrieveUserByEmail($jinput->get('email'));
-                }
+                        $this->retrieveUserByEmail($jinput->get('email'));
+                    }
                     break;
 
                 case "customer/migrate": {
-                    $this->migratecomplete($jinput->get('uuid'));
-                }
+                        $this->migratecomplete($jinput->get('uuid'));
+                    }
                     break;
 
                 case "customer/popup": {
-                    $this->migratestart($jinput->get('uuid'));
-                }
+                        $this->migratestart($jinput->get('uuid'));
+                    }
                     break;
 
             endswitch;
         }
 
-        private function migratecomplete($uuid)
-        {
+        private function migratecomplete($uuid) {
             // get key from url
             if (empty($uuid)) {
                 die('Undefined uuid');
@@ -128,19 +124,19 @@ if (!class_exists('VM_Expressly')) :
                     $salt = JUserHelper::genRandomPassword(32);
                     $crypt = JUserHelper::getCryptedPassword("ght100%2po", $salt);
                     $password = $crypt . ':' . $salt;
-                    $model = VmModel::getModel('user');
+                    $user = VmModel::getModel('user');
                     $data_to_save = array(
-                        ["name"]      => $customer['firstName'] . ' ' . $customer['lastName'],
-                        ["username"]  => $email,
+                        ["name"] => $customer['firstName'] . ' ' . $customer['lastName'],
+                        ["username"] => $email,
                         ["password1"] => $password,
                         ["password2"] =>
-                            $password,
-                        ["email1"]    => $email,
-                        ["email2"]    => $email
+                        $password,
+                        ["email1"] => $email,
+                        ["email2"] => $email
                     );
                     //Not sure about this one
-                    $model->setParam('activate', 1);
-                    $return = $model->save($data_to_save);
+                    $user->setParam('activate', 1);
+                    $return = $user->save($data_to_save);
                     $user_id = $return['newId'];
 
 
@@ -150,18 +146,29 @@ if (!class_exists('VM_Expressly')) :
                     $countryCodeProvider = $this->app['country_code.provider'];
 
                     foreach ($customer['addresses'] as $address_key => $address) {
-                        if ($address_key == $shippingAddress) {
-                            $prefix = 'ship_to';
-                        } else {
-                            continue;
-                        }
+
                         $address['virtuemart_userinfo_id'] = $user_id;
-                        $phone = isset($address['phone']) ?
-                            (!empty($customer['phones'][$address['phone']]) ? $customer['phones'][$address['phone']]
-                                : null) : null;
 
-                        $model->storeAddress($address);
+                        $user->storeAddress($address);
+                        $user->setParam('activate', 1);
+                        if ($user->save()) {
+                            $data = $user->getProperties();
 
+                            $emailSubject = JText::sprintf(
+                                            'COM_USERS_EMAIL_ACTIVATE_WITH_ADMIN_ACTIVATION_SUBJECT', $data['name'], $data['sitename']
+                            );
+
+                            $emailBody = JText::sprintf(
+                                            'COM_USERS_EMAIL_ACTIVATE_WITH_ADMIN_ACTIVATION_BODY', $data['sitename'], $data['name'], $data['email'], $data['username'], $data['activate']
+                            );
+                            $return = JFactory::getMailer()->sendMail($data['mailfrom'], $data['fromname'], $data['email'], $emailSubject, $emailBody);
+
+                            // Check for an error.
+                            if ($return !== true) {
+                                $this->setError(JText::_('COM_USERS_REGISTRATION_ACTIVATION_NOTIFY_SEND_MAIL_FAILED'));
+                                return false;
+                            }
+                        }
                     }
                 } else {
                     $user = JFactory::getUser($user_id);
@@ -169,7 +176,7 @@ if (!class_exists('VM_Expressly')) :
 
                 // Forcefully log user in
                 $app = JFactory::getApplication();
-                $app->triggerEvent('onUserLogin', array((array)$user, $options));
+                $app->triggerEvent('onUserLogin', array((array) $user, $options));
 
                 // Add items (product/coupon) to cart
                 if (!empty($json['cart'])) {
@@ -181,8 +188,6 @@ if (!class_exists('VM_Expressly')) :
                         $cart = VirtueMartCart::getCart();
 
                         $cart->add($json['cart']['productId'], false);
-
-
                     }
 
                     if (!empty($json['cart']['couponCode'])) {
@@ -193,128 +198,43 @@ if (!class_exists('VM_Expressly')) :
                 // Dispatch password creation email
                 $config = JFactory::getConfig();
                 wp_mail($email, 'Welcome!', 'Your Password: ' . $password);
-                $data['fromname']	= $config->get('fromname');
-		$data['mailfrom']	= $config->get('mailfrom');
-		$data['sitename']	= $config->get('sitename');
-		$data['siteurl']	= JUri::root();
+                $data['fromname'] = $config->get('fromname');
+                $data['mailfrom'] = $config->get('mailfrom');
+                $data['sitename'] = $config->get('sitename');
+                $return = JFactory::getMailer()->sendMail($data['mailfrom'], $data['fromname'], $data['email'], 'Welcome!', 'Your temporary Password: ' . $password);
             } catch (\Exception $e) {
                 // TODO: Log
             }
 
-            wp_redirect("/");
+            $this->setRedirect('/');
         }
 
         /**
          * @param $uuid
          */
-        private function migratestart($uuid)
-        {
+        private function migratestart($uuid) {
             $merchant = $this->app['merchant.provider']->getMerchant();
             $event = new Expressly\Event\CustomerMigrateEvent($merchant, $uuid);
 
             $popup = $this->dispatcher->dispatch('customer.migrate.start', $event)->getResponse();
-
-            wp_enqueue_script('woocommerce_expressly', plugins_url('assets/js/popupbox.js', __FILE__));
-            wp_localize_script('woocommerce_expressly', 'XLY', array(
-                'uuid' => $uuid,
-            ));
-
-            add_action('wp_footer', function () use ($popup) {
-                echo $popup;
-            });
         }
 
         /**
          *
          */
-        private function ping()
-        {
+        private function ping() {
             try {
                 $response = $this->dispatcher->dispatch('utility.ping', new Expressly\Event\ResponseEvent());
-                wp_send_json($response->getResponse());
             } catch (Exception $e) {
-                wp_send_json($e);
+                
             }
         }
 
         /**
          * @param $emailAddr
          */
-        private function retrieveUserByEmail($emailAddr)
-        {
-            try {
-                if (!is_email($emailAddr)) {
-                    wp_redirect('/');
-                }
-
-                $user = get_user_by('email', $emailAddr);
-
-                if ($user) {
-
-                    echo '<pre>';
-
-                    $customer = new Expressly\Entity\Customer();
-                    $customer
-                        ->setFirstName($user->first_name)
-                        ->setLastName($user->last_name);
-
-                    $email = new Expressly\Entity\Email();
-                    $email
-                        ->setEmail($emailAddr)
-                        ->setAlias('primary');
-
-                    $customer->addEmail($email);
-
-                    $user_id = &$user->ID;
-                    $first = true;
-                    $prefixes = ['billing', 'shipping'];
-
-                    $countryCodeProvider = $this->app['country_code.provider'];
-
-                    foreach ($prefixes as $prefix) {
-
-                        $address = new Expressly\Entity\Address();
-                        $address
-                            ->setFirstName(get_user_meta($user_id, $prefix . '_first_name', true))
-                            ->setLastName(get_user_meta($user_id, $prefix . '_last_name', true))
-                            ->setAddress1(get_user_meta($user_id, $prefix . '_address_1', true))
-                            ->setAddress2(get_user_meta($user_id, $prefix . '_address_2', true))
-                            ->setCity(get_user_meta($user_id, $prefix . '_city', true))
-                            ->setZip(get_user_meta($user_id, $prefix . '_postcode', true));
-
-                        $iso3 = $countryCodeProvider->getIso3(get_user_meta($user_id, $prefix . '_country', true));
-                        $address->setCountry($iso3);
-                        $address->setStateProvince(get_user_meta($user_id, $prefix . '_state', true));
-
-                        $phoneNumber = get_user_meta($user_id, $prefix . '_phone', true);
-
-                        if (!empty($phoneNumber)) {
-                            $phone = new Expressly\Entity\Phone();
-                            $phone
-                                ->setType(Expressly\Entity\Phone::PHONE_TYPE_HOME)
-                                ->setNumber((string)$phoneNumber);
-
-                            $customer->addPhone($phone);
-                        }
-
-                        $customer->addAddress($address, $first,
-                            ('billing' == $prefix) ? Expressly\Entity\Address::ADDRESS_BILLING
-                                : Expressly\Entity\Address::ADDRESS_SHIPPING
-                        );
-                        $first = false;
-                    }
-
-                    $merchant = $this->app['merchant.provider']->getMerchant();
-                    $response = new Expressly\Presenter\CustomerMigratePresenter($merchant, $customer, $emailAddr,
-                        $user->ID);
-
-                    wp_send_json($response->toArray());
-                }
-            } catch (\Exception $e) {
-                wp_send_json(array(
-                    'error' => sprintf('%s - %s::%u', $e->getFile(), $e->getMessage(), $e->getLine())
-                ));
-            }
+        private function retrieveUserByEmail($emailAddr) {
+            
         }
 
     }
