@@ -1,2 +1,2 @@
 # virtuemart
-Buyexpressly extension
+Expressly extension
