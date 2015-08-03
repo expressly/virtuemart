@@ -1,2 +1,2 @@
 # virtuemart
-Expressly extension
+Expressly extension - still work in progress
