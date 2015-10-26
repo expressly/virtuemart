@@ -226,7 +226,7 @@ if (!class_exists('VM_Expressly')) :
             try {
                 $response = $this->dispatcher->dispatch('utility.ping', new Expressly\Event\ResponseEvent());
             } catch (Exception $e) {
-                
+
             }
         }
 
@@ -234,7 +234,7 @@ if (!class_exists('VM_Expressly')) :
          * @param $emailAddr
          */
         private function retrieveUserByEmail($emailAddr) {
-            
+
         }
 
     }

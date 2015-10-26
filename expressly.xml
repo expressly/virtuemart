@@ -11,7 +11,7 @@
     <copyright>BuyExpressly(c)</copyright>
     <license>License Info</license>
     <!--  The version string is recorded in the components table -->
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <!-- The description is optional and defaults to the name -->
     <description><![CDATA[Description of Expressly Component]]></description>
 
@@ -43,8 +43,11 @@
             <!-- Admin Main File Copy Section -->
             <filename>index.html</filename>
             <filename>expressly.php</filename>
+            <filename>controller.php</filename>
             <!-- SQL files section -->
             <folder>sql</folder>
+            <!-- views files section -->
+            <folder>views</folder>
         </files>
     </administration>
 
