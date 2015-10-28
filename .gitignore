@@ -1,3 +1,17 @@
+/*
+!.gitignore
+!/expressly.xml
+!/README.md
+!/administrator
+/administrator/*
+!/administrator/components
+/administrator/components/*
+!/administrator/components/com_expressly
+!/components
+/components/*
+!/components/com_expressly
+!/install/
+
 /vendor/
 /composer.phar
 /composer.lock
