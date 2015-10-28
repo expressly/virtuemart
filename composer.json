@@ -7,8 +7,11 @@
             "email": "info@buyexpressly.com"
         }
     ],
+    "config": {
+      "vendor-dir": "administrator/components/com_expressly/libraries/expressly"
+    },
     "require": {
-        "expressly/php-common": "1.0.10"
+        "expressly/php-common": "~1.1.0"
     },
     "repositories": [
         {

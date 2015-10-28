@@ -64,8 +64,9 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
             $src = $this->path . DS . "libraries";
             $dst = JPATH_ROOT . DS . "libraries";
 
-            $this->recurse_copy ($src, $dst);
-/*
+            var_dump($src, $dst, $this->recurse_copy ($src, $dst)); die();
+
+
             $config = VmModel::getModel('config');
             //TODO: createpassword from buyexpressly
             $expresslyConfig = array(
@@ -82,10 +83,10 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
                 VmConfig::loadConfig();
                 echo 'Expressly configuration saved<br/>';
             }
-*/
+
             echo '<p>The module has been installed</p>';
 
-            return true;
+            return false;
         }
 
         /**

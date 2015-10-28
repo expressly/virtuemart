@@ -2,7 +2,9 @@
 
 defined('_JEXEC') or die();
 
-//use Expressly\Presenter\PingPresenter;
+jimport('expressly.autoload');
+
+use Expressly\Presenter\PingPresenter;
 
 /**
  *
@@ -13,14 +15,15 @@ class ExpresslyController extends JControllerLegacy
     {
         $__xly = JFactory::getApplication()->input->get('__xly', '', 'string');
         //$__xly = JRequest::getVar('__xly');
+        $data = [];
 
         switch ($__xly) {
 
             case '/expressly/api/ping':
-                /*
+
                 $presenter = new PingPresenter();
-                wp_send_json($presenter->toArray());
-                */
+                $data = $presenter->toArray();
+
                 break;
             default:
                 die('Nothing here');
@@ -31,7 +34,7 @@ class ExpresslyController extends JControllerLegacy
         JResponse::setHeader('Content-Type', 'application/json', true);
         JResponse::sendHeaders();
 
-        echo json_encode(['__xly' => $__xly]);
+        echo json_encode($data);
 
         JFactory::getApplication()->close();
 

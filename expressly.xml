@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension type="component" version="2.5.0" method="upgrade">
+<extension method="upgrade" type="component" version="2.5">
     <name>Expressly</name>
     <creationDate>October 28 2015</creationDate>
     <author>Expressly</author>
@@ -13,40 +13,25 @@
     <scriptfile>install/script.expressly.php</scriptfile>
 
     <!-- Site Main File Copy Section -->
-    <files folder="components/com_expressly">
+    <files folder="site">
         <filename>controller.php</filename>
         <filename>expressly.php</filename>
         <filename>index.html</filename>
         <folder>views</folder>
     </files>
+
     <administration>
         <!-- Administration Menu Section -->
         <menu link="index.php?option=com_expressly">COM_EXPRESSLY</menu>
-        <submenu>
-            <menu link="option=com_virtuemart&amp;view=category" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-categories.png">COM_VIRTUEMART_MENU_CATEGORIES</menu>
-            <menu link="option=com_virtuemart&amp;view=product" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-products.png">COM_VIRTUEMART_MENU_PRODUCTS</menu>
-            <menu link="option=com_virtuemart&amp;view=orders" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-orders.png">COM_VIRTUEMART_MENU_ORDERS</menu>
-            <menu link="option=com_virtuemart&amp;view=report" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-report.png">COM_VIRTUEMART_MENU_REPORT</menu>
-            <menu link="option=com_virtuemart&amp;view=user" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-shoppers.png">COM_VIRTUEMART_MENU_USERS</menu>
-            <menu link="option=com_virtuemart&amp;view=manufacturer" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-manufacturers.png">COM_VIRTUEMART_MENU_MANUFACTURERS</menu>
-            <menu link="option=com_virtuemart&amp;view=user&amp;task=editshop" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-shop.png">COM_VIRTUEMART_MENU_STORE</menu>
-            <menu link="option=com_virtuemart&amp;view=media" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-media.png">COM_VIRTUEMART_MENU_MEDIAFILES</menu>
-            <menu link="option=com_virtuemart&amp;view=shipmentmethod" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-shipmentmethods.png">COM_VIRTUEMART_MENU_SHIPMENTMETHODS</menu>
-            <menu link="option=com_virtuemart&amp;view=paymentmethod" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-paymentmethods.png">COM_VIRTUEMART_MENU_PAYMENTMETHODS</menu>
-            <menu link="option=com_virtuemart&amp;view=config" img="components/com_virtuemart/assets/images/icon_16/menu-icon16-config.png">COM_VIRTUEMART_MENU_CONFIGURATION</menu>
-        </submenu>
         <!-- Administration Main File Copy Section -->
-        <files folder="administrator/components/com_expressly">
+        <files folder="admin">
             <filename>controller.php</filename>
             <filename>expressly.php</filename>
             <filename>index.html</filename>
+            <folder>install</folder>
+            <folder>libraries</folder>
             <folder>sql</folder>
             <folder>views</folder>
         </files>
     </administration>
-
-    <!--
-    <installfile>expressly.php</installfile>
-    <scriptfile>vendor/autoload.php</scriptfile>
-    <administration></administration> -->
 </extension>
