@@ -9,7 +9,6 @@ defined ('_JEXEC') or die('Restricted access');
 
 defined('DS') or define('DS', DIRECTORY_SEPARATOR);
 
-
 if (!class_exists ('VmConfig')) {
     if(file_exists(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php')){
         require(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php');

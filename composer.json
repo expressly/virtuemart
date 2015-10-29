@@ -1,6 +1,6 @@
 {
     "name": "expressly/virtuemart",
-    "description": "Expressly virtuemart Module",
+    "description": "Expressly Virtuemart Extension",
     "authors": [
         {
             "name": "expressly",
@@ -8,10 +8,10 @@
         }
     ],
     "config": {
-      "vendor-dir": "administrator/components/com_expressly/libraries/expressly"
+      "vendor-dir": "admin/libraries/expressly"
     },
     "require": {
-        "expressly/php-common": "~1.1.0"
+        "expressly/php-common": "2.2.2"
     },
     "repositories": [
         {
