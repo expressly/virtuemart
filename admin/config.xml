@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+    <fieldset name="basic" label="General">
+        <field name="expressly_api_key"
+               type="text"
+               label="API Key"
+               description=""
+               default="" />
+        <field name="expressly_host" type="text" label="Host" readonly="readonly" default="" />
+        <field name="expressly_path" type="text" label="Path" readonly="readonly" default="" />
+    </fieldset>
+</config>

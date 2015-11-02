@@ -1,5 +1,5 @@
-/admin/libraries/expressly/*
-!/admin/libraries/expressly/.gitkeep
+/admin/libraries/expressly/vendor/*
+!/admin/libraries/expressly/vendor/.gitkeep
 /composer.phar
 /composer.lock
 /nbproject

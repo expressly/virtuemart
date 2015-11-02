@@ -2,14 +2,26 @@
 
 defined('_JEXEC') or die();
 
+defined('DS') or define('DS', DIRECTORY_SEPARATOR);
+
+if (!class_exists ('VmConfig')) {
+    if(file_exists(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php')){
+        require(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php');
+    } else {
+        jExit('Install the virtuemart Core first');
+    }
+}
+
+VmConfig::loadConfig();
+
 use Expressly\Entity\MerchantType;
 
-use Expressly\Route\BatchCustomer;
-use Expressly\Route\BatchInvoice;
-use Expressly\Route\CampaignMigration;
-use Expressly\Route\CampaignPopup;
-use Expressly\Route\Ping;
-use Expressly\Route\UserData;
+use Expressly\Route\Ping,
+    Expressly\Route\UserData,
+    Expressly\Route\CampaignPopup,
+    Expressly\Route\CampaignMigration,
+    Expressly\Route\BatchCustomer,
+    Expressly\Route\BatchInvoice;
 
 /**
  *
@@ -38,13 +50,11 @@ class ExpresslyController extends JControllerLegacy
         $client = new \Expressly\Client(MerchantType::WOOCOMMERCE);
 
         $app = $client->getApp();
-        /*$app['merchant.provider'] = $app->share(function () {
-            return new WC_Expressly_MerchantProvider();
-        });*/
+        $app['merchant.provider'] = $app->share(function () {
+            return new ExpresslyMerchantProvider();
+        });
 
         $this->app = $app;
-        $this->dispatcher = $this->app['dispatcher'];
-        $this->merchantProvider = $this->app['merchant.provider'];
     }
 
     /**
@@ -52,50 +62,40 @@ class ExpresslyController extends JControllerLegacy
      */
     public function display($cachable = false, $urlparams = false)
     {
-        $__xly = $this->input->get('__xly', '', 'string');
+        // Get route
+        $route = $this->app['route.resolver']->process($this->input->get('__xly', '', 'string'));
 
-        $route = $this->app['route.resolver']->process($__xly);
+        if ($route instanceof \Expressly\Entity\Route) {
 
-        if ($route instanceof Route) {
+            // Set $app for helper methods
+            ExpresslyHelper::setApp($this->app);
+
             switch ($route->getName()) {
                 case Ping::getName():
                     ExpresslyHelper::ping();
                     break;
-                /*case UserData::getName():
+                case UserData::getName():
                     $data = $route->getData();
                     ExpresslyHelper::retrieveUserByEmail($data['email']);
                     break;
                 case CampaignPopup::getName():
                     $data = $route->getData();
-                    $this->migratestart($data['uuid']);
+                    ExpresslyHelper::migratestart($data['uuid']);
                     break;
                 case CampaignMigration::getName():
                     $data = $route->getData();
-                    $this->migratecomplete($data['uuid']);
+                    ExpresslyHelper::migratecomplete($data['uuid']);
                     break;
                 case BatchCustomer::getName():
-                    $this->batchCustomer();
+                    ExpresslyHelper::batchCustomer();
                     break;
                 case BatchInvoice::getName():
-                    $this->batchInvoice();
-                    break;*/
+                    ExpresslyHelper::batchInvoice();
+                    break;
             }
         }
+
+        header('HTTP/1.0 404 Not Found');
+        exit();
     }
 }
-/*
-class ExpresslyController extends JControllerLegacy
-{
-    public function __construct($config = array())
-    {
-        parent::__construct($config);
-
-        // Register Extra tasks
-        $this->registerTask('email', 'shout');
-    }
-
-    function ping()
-    {
-        echo new JResponseJson(['sdfasdf' => 43]);
-    }
-}*/

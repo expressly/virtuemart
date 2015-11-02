@@ -3,6 +3,18 @@
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 
+defined('DS') or define('DS', DIRECTORY_SEPARATOR);
+
+if (!class_exists ('VmConfig')) {
+    if(file_exists(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php')){
+        require(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php');
+    } else {
+        jExit('Install the virtuemart Core first');
+    }
+}
+
+VmConfig::loadConfig();
+
 /**
  *
  */
@@ -32,7 +44,7 @@ class ExpresslyViewDashboard extends JViewLegacy
         JToolBarHelper::title(JText::_('COM_EXPRESSLY_DASHBOARD'));
 
         if (true) {
-            JToolBarHelper::custom('register', 'publish.png', 'publish_f2.png', 'COM_EXPRESSLY_JTOOLBAR_REGISTER', false);
+            JToolBarHelper::custom('register', 'publish.png', 'publish_f2.png', 'Register', false);
             JToolBarHelper::divider();
         }
 

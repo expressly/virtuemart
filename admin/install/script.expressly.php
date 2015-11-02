@@ -9,7 +9,6 @@ defined ('_JEXEC') or die('Restricted access');
 
 defined('DS') or define('DS', DIRECTORY_SEPARATOR);
 
-
 if (!class_exists ('VmConfig')) {
     if(file_exists(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php')){
         require(JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_virtuemart' . DS . 'helpers' . DS . 'config.php');
@@ -17,13 +16,12 @@ if (!class_exists ('VmConfig')) {
         jExit('Install the virtuemart Core first');
     }
 }
-/*
+
 VmConfig::loadConfig();
 
 if (!class_exists('VmModel'))
     require_once (VMPATH_ADMIN . DS . 'helpers' . DS . 'vmmodel.php');
 
-*/
 
 // hack to prevent defining these twice in 1.6 installation
 if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
@@ -64,29 +62,11 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
             $src = $this->path . DS . "libraries";
             $dst = JPATH_ROOT . DS . "libraries";
 
-            var_dump($src, $dst, $this->recurse_copy ($src, $dst)); die();
-
-
-            $config = VmModel::getModel('config');
-            //TODO: createpassword from buyexpressly
-            $expresslyConfig = array(
-                'expressly_host'           => sprintf('://%s', $_SERVER['HTTP_HOST']),
-                'wc_expressly_destination' => '/',
-                'wc_expressly_offer'       => 'yes',
-                'wc_expressly_password'    => uniqid(),
-                'wc_expressly_path'        => 'index.php'
-            );
-
-            if ($config->store($expresslyConfig)) {
-
-                // Load the newly saved values into the session.
-                VmConfig::loadConfig();
-                echo 'Expressly configuration saved<br/>';
-            }
+            $this->recurse_copy($src, $dst);
 
             echo '<p>The module has been installed</p>';
 
-            return false;
+            return true;
         }
 
         /**
@@ -97,7 +77,7 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
          */
         function update($parent)
         {
-            echo '<p>The module has been updated to version' . $parent->get('manifest')->version . '</p>';
+            echo '<p>The module has been updated to version ' . $parent->get('manifest')->version . '</p>';
         }
 
         /**
@@ -120,6 +100,23 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
          */
         function postflight($type, $parent)
         {
+            // $parent is the class calling this method
+            // $type is the type of change (install, update or discover_install)
+
+            if ($type == 'install') {
+                $db = JFactory::getDBO();
+                $query = $db->getQuery(true);
+                $query->update($db->quoteName('#__extensions'));
+                $defaults = json_encode([
+                    'expressly_host' => JUri::root(),
+                    'expressly_path' => 'index.php?option=com_expressly&__xly='
+                ]);
+                $query->set($db->quoteName('params') . ' = ' . $db->quote($defaults));
+                $query->where($db->quoteName('name') . ' = ' . $db->quote('com_expressly'));
+                $db->setQuery($query);
+                $db->execute();
+            }
+
             echo '<p>Anything here happens after the installation/update/uninstallation of the module</p>';
         }
 
@@ -131,7 +128,7 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
          * @param String $dst path
          * @param String $type modulesBE, modules, plugins, languageBE, languageFE
          */
-        private function recurse_copy ($src, $dst) {
+        private function recurse_copy($src, $dst) {
 
             static $failed = false;
             $dir = opendir ($src);
