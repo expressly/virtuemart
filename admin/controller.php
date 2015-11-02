@@ -74,8 +74,7 @@ class ExpresslyController extends JControllerLegacy
         // REGISTER
 
         $merchant = $this->app['merchant.provider']->getMerchant(true);
-        var_dump($merchant); die();
-        $event = new \Expressly\Event\PasswordedEvent($merchant);
+        $event    = new \Expressly\Event\PasswordedEvent($merchant);
 
         try {
             $this->app['dispatcher']->dispatch(\Expressly\Subscriber\MerchantSubscriber::MERCHANT_REGISTER, $event);
