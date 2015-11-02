@@ -112,7 +112,7 @@ if (!defined ('_EXPRESSLY_SCRIPT_INCLUDED')) {
                     'expressly_path' => 'index.php?option=com_expressly&__xly='
                 ]);
                 $query->set($db->quoteName('params') . ' = ' . $db->quote($defaults));
-                $query->where($db->quoteName('name') . ' = ' . $db->quote('com_expressly'));
+                $query->where($db->quoteName('element') . ' = ' . $db->quote('com_expressly'));
                 $db->setQuery($query);
                 $db->execute();
             }
