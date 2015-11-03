@@ -2,6 +2,11 @@
 
 defined('_JEXEC') or die();
 
+use Expressly\Event\CustomerMigrateEvent;
+use Expressly\Exception\ExceptionFormatter;
+use Expressly\Exception\GenericException;
+use Expressly\Subscriber\CustomerMigrationSubscriber;
+
 /**
  *
  */
@@ -47,7 +52,82 @@ abstract class ExpresslyHelper
      */
     public static function retrieveUserByEmail($emailAddr)
     {
-        // Do something
+        try {
+            // get joomla user
+            $user = self::get_user_by_email($emailAddr);
+
+            // TODO: Need to load virtuemart specific fields (first_name, last_name, etc)
+
+            if (null !== $user) {
+
+                throw new \Exception('Missed required data');
+
+                /*$customer = new \Expressly\Entity\Customer();
+                $customer
+                    ->setFirstName($user->first_name)
+                    ->setLastName($user->last_name);
+                $email = new \Expressly\Entity\Email();
+                $email
+                    ->setEmail($emailAddr)
+                    ->setAlias('primary');
+                $customer->addEmail($email);
+                $user_id =& $user->ID;
+                $countryCodeProvider = self::$app['country_code.provider'];
+                $createAddress = function ($prefix) use ($user_id, $countryCodeProvider, $customer) {
+                    $address = new Address();
+                    $address
+                        ->setFirstName(get_user_meta($user_id, $prefix . '_first_name', true))
+                        ->setLastName(get_user_meta($user_id, $prefix . '_last_name', true))
+                        ->setAddress1(get_user_meta($user_id, $prefix . '_address_1', true))
+                        ->setAddress2(get_user_meta($user_id, $prefix . '_address_2', true))
+                        ->setCity(get_user_meta($user_id, $prefix . '_city', true))
+                        ->setZip(get_user_meta($user_id, $prefix . '_postcode', true));
+                    $iso3 = $countryCodeProvider->getIso3(get_user_meta($user_id, $prefix . '_country', true));
+                    $address->setCountry($iso3);
+                    $address->setStateProvince(get_user_meta($user_id, $prefix . '_state', true));
+                    $phoneNumber = get_user_meta($user_id, $prefix . '_phone', true);
+                    if (!empty($phoneNumber)) {
+                        $phone = new \Expressly\Entity\Phone();
+                        $phone
+                            ->setType(\Expressly\Entity\Phone::PHONE_TYPE_HOME)
+                            ->setNumber((string)$phoneNumber);
+                        $customer->addPhone($phone);
+                        $address->setPhonePosition((int)$customer->getPhoneIndex($phone));
+                    }
+                    return $address;
+                };
+                $billingAddress = $createAddress('billing');
+                $shippingAddress = $createAddress('shipping');
+                if (Address::compare($billingAddress, $shippingAddress)) {
+                    $customer->addAddress($billingAddress, true, Address::ADDRESS_BOTH);
+                } else {
+                    $customer->addAddress($billingAddress, true, Address::ADDRESS_BILLING);
+                    $customer->addAddress($shippingAddress, true, Address::ADDRESS_SHIPPING);
+                }
+                $merchant = self::$app['merchant.provider']->getMerchant();
+                $response = new \Expressly\Presenter\CustomerMigratePresenter($merchant, $customer, $emailAddr, $user->ID);
+                self::send_json($response->toArray());*/
+            }
+        } catch (\Exception $e) {
+            self::$app['logger']->error(ExceptionFormatter::format($e));
+            self::send_json([]);
+        }
+    }
+
+    /**
+     * Get Joomla! user by email
+     *
+     * @param  string $email
+     * @return JUser|null
+     */
+    protected static function get_user_by_email($email)
+    {
+        $db = JFactory::getDbo();
+
+        $db->setQuery("SELECT * FROM #__users WHERE email = " . $db->quote($email) . "");
+        $result = $db->loadObject();
+
+        return ($result->id) ? JFactory::getUser($result->id) : null;
     }
 
     /**
@@ -56,22 +136,28 @@ abstract class ExpresslyHelper
     public static function migratestart($uuid)
     {
         $merchant = self::$app['merchant.provider']->getMerchant();
-        $event = new CustomerMigrateEvent($merchant, $uuid);
+        $event    = new CustomerMigrateEvent($merchant, $uuid);
+
         try {
             self::$app['dispatcher']->dispatch(CustomerMigrationSubscriber::CUSTOMER_MIGRATE_POPUP, $event);
+            var_dump($event);
             if (!$event->isSuccessful()) {
                 throw new GenericException(self::error_formatter($event));
             }
         } catch (\Exception $e) {
+            //var_dump($e);
             self::$app['logger']->error(ExceptionFormatter::format($e));
-            wp_redirect('/');
+            JFactory::getApplication()->redirect('/');
         }
-        wp_enqueue_script('woocommerce_expressly', plugins_url('assets/js/expressly.popup.js', __FILE__));
-        wp_localize_script('woocommerce_expressly', 'XLY', array('uuid' => $uuid));
+
+        //wp_enqueue_script('woocommerce_expressly', plugins_url('assets/js/expressly.popup.js', __FILE__));
+        //wp_localize_script('woocommerce_expressly', 'XLY', array('uuid' => $uuid));
+
         $content = $event->getContent();
-        add_action('wp_footer', function () use ($content) {
+
+        /*add_action('wp_footer', function () use ($content) {
             echo $content;
-        });
+        });*/
     }
 
     /**
@@ -79,10 +165,9 @@ abstract class ExpresslyHelper
      */
     public static function migratecomplete($uuid)
     {
-        // get key from url
-        if (empty($uuid)) {
-            wp_redirect('/');
-        }
+        if (empty($uuid))
+            JFactory::getApplication()->redirect('/');
+
         $exists = false;
         $merchant = self::$app['merchant.provider']->getMerchant();
         $event = new Expressly\Event\CustomerMigrateEvent($merchant, $uuid);
@@ -93,7 +178,7 @@ abstract class ExpresslyHelper
                 if (!empty($json['code']) && $json['code'] == 'USER_ALREADY_MIGRATED') {
                     $exists = true;
                 }
-                throw new UserExistsException(self::error_formatter($event));
+                throw new \Expressly\Exception\UserExistsException(self::error_formatter($event));
             }
             $email = $json['migration']['data']['email'];
             $user_id = email_exists($email);
@@ -160,11 +245,13 @@ abstract class ExpresslyHelper
         } catch (\Exception $e) {
             self::$app['logger']->error(ExceptionFormatter::format($e));
         }
+
         if ($exists) {
             wp_enqueue_script('woocommerce_expressly', plugins_url('assets/js/expressly.exists.js', __FILE__));
             return;
         }
-        wp_redirect("/");
+
+        JFactory::getApplication()->redirect('/');
     }
 
     /**
