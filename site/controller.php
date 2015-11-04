@@ -14,6 +14,8 @@ if (!class_exists ('VmConfig')) {
 
 VmConfig::loadConfig();
 
+JModelLegacy::addIncludePath(JPATH_SITE . '/components/com_users/models', 'UsersModel');
+
 use Expressly\Entity\MerchantType;
 
 use Expressly\Route\Ping,
@@ -58,7 +60,7 @@ class ExpresslyController extends JControllerLegacy
     }
 
     /**
-     *
+     * Default task
      */
     public function display($cachable = false, $urlparams = false)
     {
@@ -80,11 +82,11 @@ class ExpresslyController extends JControllerLegacy
                     break;
                 case CampaignPopup::getName():
                     $data = $route->getData();
-                    ExpresslyHelper::migratestart($data['uuid']);
+                    $this->migratestart($data['uuid']);
                     break;
                 case CampaignMigration::getName():
                     $data = $route->getData();
-                    ExpresslyHelper::migratecomplete($data['uuid']);
+                    $this->migratecomplete($data['uuid']);
                     break;
                 case BatchCustomer::getName():
                     ExpresslyHelper::batchCustomer();
@@ -94,8 +96,151 @@ class ExpresslyController extends JControllerLegacy
                     break;
             }
         }
+    }
 
-        header('HTTP/1.0 404 Not Found');
-        exit();
+    /**
+     *
+     */
+    private function migratestart($uuid)
+    {
+        $merchant = $this->app['merchant.provider']->getMerchant();
+        $event    = new \Expressly\Event\CustomerMigrateEvent($merchant, $uuid);
+
+        try {
+            $this->app['dispatcher']->dispatch(\Expressly\Subscriber\CustomerMigrationSubscriber::CUSTOMER_MIGRATE_POPUP, $event);
+
+            if (!$event->isSuccessful()) {
+                throw new \Expressly\Exception\GenericException(ExpresslyHelper::error_formatter($event));
+            }
+        } catch (\Exception $e) {
+            $this->app['logger']->error(\Expressly\Exception\ExceptionFormatter::format($e));
+            JFactory::getApplication()->redirect('/');
+        }
+
+        $view = $this->getView('expressly', 'html');
+        $view->setProperties([
+            'uuid'  => $uuid,
+            'popup' => $event->getContent(),
+        ]);
+
+        $view->display();
+    }
+
+    /**
+     *
+     */
+    private function migratecomplete($uuid)
+    {
+        if (empty($uuid))
+            JFactory::getApplication()->redirect('/');
+
+        $exists   = false;
+        $merchant = $this->app['merchant.provider']->getMerchant();
+        $event    = new Expressly\Event\CustomerMigrateEvent($merchant, $uuid);
+
+        try {
+            $this->app['dispatcher']->dispatch(\Expressly\Subscriber\CustomerMigrationSubscriber::CUSTOMER_MIGRATE_DATA, $event);
+            $json = $event->getContent();
+
+            if (!$event->isSuccessful()) {
+                if (!empty($json['code']) && $json['code'] == 'USER_ALREADY_MIGRATED') {
+                    $exists = true;
+                }
+                throw new \Expressly\Exception\UserExistsException(ExpresslyHelper::error_formatter($event));
+            }
+
+            $email = $json['migration']['data']['email'];
+            $user  = ExpresslyHelper::get_user_by_email($email);
+
+            if (null === $user) {
+
+                $customer = $json['migration']['data']['customerData'];
+
+                $model = JModelLegacy::getInstance('Registration', 'UsersModel', array('ignore_request' => true));
+                $model->register([
+                    'name'      => $customer['firstName'] . ' ' . $customer['lastName'],
+                    'username'  => 'user'.time().rand(1000, 9999),
+                    'email1'    => $email,
+                    'password1' => JUserHelper::genRandomPassword(),
+                ]);
+
+                /*
+
+                // Set the role
+                $user = new WP_User($user_id);
+                $user->set_role('customer');
+
+                $countryCodeProvider = $this->app['country_code.provider'];
+
+                $addAddress = function ($address, $prefix) use ($customer, $user_id, $countryCodeProvider) {
+                    $phone = isset($address['phone']) ?
+                        (!empty($customer['phones'][$address['phone']]) ? $customer['phones'][$address['phone']] : null) : null;
+                    update_user_meta($user_id, $prefix . '_first_name', $address['firstName']);
+                    update_user_meta($user_id, $prefix . '_last_name', $address['lastName']);
+                    if (!empty($address['address1'])) {
+                        update_user_meta($user_id, $prefix . '_address_1', $address['address1']);
+                    }
+                    if (!empty($address['address2'])) {
+                        update_user_meta($user_id, $prefix . '_address_2', $address['address2']);
+                    }
+                    update_user_meta($user_id, $prefix . '_city', $address['city']);
+                    update_user_meta($user_id, $prefix . '_postcode', $address['zip']);
+                    if (!empty($phone)) {
+                        update_user_meta($user_id, $prefix . '_phone', $phone['number']);
+                    }
+                    $iso2 = $countryCodeProvider->getIso2($address['country']);
+                    update_user_meta($user_id, $prefix . '_state', $address['stateProvince']);
+                    update_user_meta($user_id, $prefix . '_country', $iso2);
+                };
+
+                if (isset($customer['billingAddress'])) {
+                    $addAddress($customer['addresses'][$customer['billingAddress']], 'billing');
+                }
+
+                if (isset($customer['shippingAddress'])) {
+                    $addAddress($customer['addresses'][$customer['shippingAddress']], 'shipping');
+                }
+
+                // Dispatch password creation email
+                wp_mail($email, 'Welcome!', 'Your Password: ' . $password);
+
+                // Forcefully log user in
+                wp_set_auth_cookie($user_id);
+
+                */
+            } else {
+                $exists = true;
+                $event = new \Expressly\Event\CustomerMigrateEvent($merchant, $uuid, \Expressly\Event\CustomerMigrateEvent::EXISTING_CUSTOMER);
+            }
+            // Add items (product/coupon) to cart
+            /*if (!empty($json['cart'])) {
+                WC()->cart->empty_cart();
+                if (!empty($json['cart']['productId'])) {
+                    WC()->cart->add_to_cart($json['cart']['productId'], 1);
+                }
+                if (!empty($json['cart']['couponCode'])) {
+                    WC()->cart->add_discount(sanitize_text_field($json['cart']['couponCode']));
+                }
+            }*/
+            $this->app['dispatcher']->dispatch(\Expressly\Subscriber\CustomerMigrationSubscriber::CUSTOMER_MIGRATE_SUCCESS, $event);
+        } catch (\Exception $e) {
+            $this->app['logger']->error(\Expressly\Exception\ExceptionFormatter::format($e));
+        }
+
+        if ($exists) {
+
+            $view = $this->getView('expressly', 'html');
+            $view->setLayout('exists');
+            $view->setProperties([
+                'uuid'  => $uuid,
+                'popup' => $event->getContent(),
+            ]);
+
+            $view->display();
+
+            return;
+        }
+
+        JFactory::getApplication()->redirect('/');
     }
 }

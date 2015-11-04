@@ -120,7 +120,7 @@ abstract class ExpresslyHelper
      * @param  string $email
      * @return JUser|null
      */
-    protected static function get_user_by_email($email)
+    public static function get_user_by_email($email)
     {
         $db = JFactory::getDbo();
 
@@ -128,130 +128,6 @@ abstract class ExpresslyHelper
         $result = $db->loadObject();
 
         return ($result->id) ? JFactory::getUser($result->id) : null;
-    }
-
-    /**
-     *
-     */
-    public static function migratestart($uuid)
-    {
-        $merchant = self::$app['merchant.provider']->getMerchant();
-        $event    = new CustomerMigrateEvent($merchant, $uuid);
-
-        try {
-            self::$app['dispatcher']->dispatch(CustomerMigrationSubscriber::CUSTOMER_MIGRATE_POPUP, $event);
-            var_dump($event);
-            if (!$event->isSuccessful()) {
-                throw new GenericException(self::error_formatter($event));
-            }
-        } catch (\Exception $e) {
-            //var_dump($e);
-            self::$app['logger']->error(ExceptionFormatter::format($e));
-            JFactory::getApplication()->redirect('/');
-        }
-
-        //wp_enqueue_script('woocommerce_expressly', plugins_url('assets/js/expressly.popup.js', __FILE__));
-        //wp_localize_script('woocommerce_expressly', 'XLY', array('uuid' => $uuid));
-
-        $content = $event->getContent();
-
-        /*add_action('wp_footer', function () use ($content) {
-            echo $content;
-        });*/
-    }
-
-    /**
-     *
-     */
-    public static function migratecomplete($uuid)
-    {
-        if (empty($uuid))
-            JFactory::getApplication()->redirect('/');
-
-        $exists = false;
-        $merchant = self::$app['merchant.provider']->getMerchant();
-        $event = new Expressly\Event\CustomerMigrateEvent($merchant, $uuid);
-        try {
-            self::$app['dispatcher']->dispatch(CustomerMigrationSubscriber::CUSTOMER_MIGRATE_DATA, $event);
-            $json = $event->getContent();
-            if (!$event->isSuccessful()) {
-                if (!empty($json['code']) && $json['code'] == 'USER_ALREADY_MIGRATED') {
-                    $exists = true;
-                }
-                throw new \Expressly\Exception\UserExistsException(self::error_formatter($event));
-            }
-            $email = $json['migration']['data']['email'];
-            $user_id = email_exists($email);
-            if (!$user_id) {
-                $customer = $json['migration']['data']['customerData'];
-                // Generate the password and create the user
-                $password = wp_generate_password(12, false);
-                $user_id = wp_create_user($email, $password, $email);
-                wp_update_user(array(
-                    'ID' => $user_id,
-                    'first_name' => $customer['firstName'],
-                    'last_name' => $customer['lastName'],
-                    'display_name' => $customer['firstName'] . ' ' . $customer['lastName'],
-                ));
-                // Set the role
-                $user = new WP_User($user_id);
-                $user->set_role('customer');
-                $countryCodeProvider = self::$app['country_code.provider'];
-                $addAddress = function ($address, $prefix) use ($customer, $user_id, $countryCodeProvider) {
-                    $phone = isset($address['phone']) ?
-                        (!empty($customer['phones'][$address['phone']]) ? $customer['phones'][$address['phone']] : null) : null;
-                    update_user_meta($user_id, $prefix . '_first_name', $address['firstName']);
-                    update_user_meta($user_id, $prefix . '_last_name', $address['lastName']);
-                    if (!empty($address['address1'])) {
-                        update_user_meta($user_id, $prefix . '_address_1', $address['address1']);
-                    }
-                    if (!empty($address['address2'])) {
-                        update_user_meta($user_id, $prefix . '_address_2', $address['address2']);
-                    }
-                    update_user_meta($user_id, $prefix . '_city', $address['city']);
-                    update_user_meta($user_id, $prefix . '_postcode', $address['zip']);
-                    if (!empty($phone)) {
-                        update_user_meta($user_id, $prefix . '_phone', $phone['number']);
-                    }
-                    $iso2 = $countryCodeProvider->getIso2($address['country']);
-                    update_user_meta($user_id, $prefix . '_state', $address['stateProvince']);
-                    update_user_meta($user_id, $prefix . '_country', $iso2);
-                };
-                if (isset($customer['billingAddress'])) {
-                    $addAddress($customer['addresses'][$customer['billingAddress']], 'billing');
-                }
-                if (isset($customer['shippingAddress'])) {
-                    $addAddress($customer['addresses'][$customer['shippingAddress']], 'shipping');
-                }
-                // Dispatch password creation email
-                wp_mail($email, 'Welcome!', 'Your Password: ' . $password);
-                // Forcefully log user in
-                wp_set_auth_cookie($user_id);
-            } else {
-                $exists = true;
-                $event = new CustomerMigrateEvent($merchant, $uuid, CustomerMigrateEvent::EXISTING_CUSTOMER);
-            }
-            // Add items (product/coupon) to cart
-            if (!empty($json['cart'])) {
-                WC()->cart->empty_cart();
-                if (!empty($json['cart']['productId'])) {
-                    WC()->cart->add_to_cart($json['cart']['productId'], 1);
-                }
-                if (!empty($json['cart']['couponCode'])) {
-                    WC()->cart->add_discount(sanitize_text_field($json['cart']['couponCode']));
-                }
-            }
-            self::$app['dispatcher']->dispatch(CustomerMigrationSubscriber::CUSTOMER_MIGRATE_SUCCESS, $event);
-        } catch (\Exception $e) {
-            self::$app['logger']->error(ExceptionFormatter::format($e));
-        }
-
-        if ($exists) {
-            wp_enqueue_script('woocommerce_expressly', plugins_url('assets/js/expressly.exists.js', __FILE__));
-            return;
-        }
-
-        JFactory::getApplication()->redirect('/');
     }
 
     /**
@@ -348,7 +224,7 @@ abstract class ExpresslyHelper
     /**
      *
      */
-    protected static function error_formatter($event)
+    public static function error_formatter($event)
     {
         $content = $event->getContent();
         $message = array(
