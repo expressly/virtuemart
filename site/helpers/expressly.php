@@ -28,7 +28,7 @@ abstract class ExpresslyHelper
     /**
      *
      */
-    protected static function send_json($data)
+    public static function send_json($data)
     {
         JFactory::getApplication()->setHeader('Content-Type', 'application/json', true);
         JFactory::getApplication()->sendHeaders();
@@ -128,97 +128,6 @@ abstract class ExpresslyHelper
         $result = $db->loadObject();
 
         return ($result->id) ? JFactory::getUser($result->id) : null;
-    }
-
-    /**
-     *
-     */
-    public static function batchCustomer()
-    {
-        $json = file_get_contents('php://input');
-        $json = json_decode($json);
-        $users = array();
-        try {
-            if (!property_exists($json, 'emails')) {
-                throw new GenericException('Invalid JSON request');
-            }
-            $merchant = self::$app['merchant.provider']->getMerchant();
-            foreach ($json->emails as $email) {
-                // user_status is a deprecated column and cannot be depended upon
-                if (email_exists($email)) {
-                    $users['existing'][] = $email;
-                }
-            }
-            $presenter = new BatchCustomerPresenter($merchant, $users);
-            wp_send_json($presenter->toArray());
-        } catch (GenericException $e) {
-            self::$app['logger']->error($e);
-            wp_send_json(array());
-        }
-    }
-
-    /**
-     *
-     */
-    public static function batchInvoice()
-    {
-        $json = file_get_contents('php://input');
-        $json = json_decode($json);
-        $invoices = array();
-        try {
-            if (!property_exists($json, 'customers')) {
-                throw new GenericException('Invalid JSON request');
-            }
-            $merchant = self::$app['merchant.provider']->getMerchant();
-            foreach ($json->customers as $customer) {
-                if (!property_exists($customer, 'email')) {
-                    continue;
-                }
-                if (email_exists($customer->email)) {
-                    $invoice = new Invoice();
-                    $invoice->setEmail($customer->email);
-                    $orderPosts = get_posts(array(
-                        'meta_key' => '_billing_email',
-                        'meta_value' => $customer->email,
-                        'post_type' => 'shop_order',
-                        'numberposts' => -1
-                    ));
-                    foreach ($orderPosts as $post) {
-                        $wpOrder = new WC_Order($post->ID);
-                        if ($wpOrder->order_date > $customer->from && $wpOrder->order_date < $customer->to) {
-                            $total = 0.0;
-                            $tax = 0.0;
-                            $count = 0;
-                            $order = new Order();
-                            foreach ($wpOrder->get_items('line_item') as $lineItem) {
-                                $tax += (double)$lineItem['line_tax'];
-                                $total += (double)$lineItem['line_total'] - (double)$lineItem['line_tax'];
-                                $count++;
-                                if ($lineItem->tax_class) {
-                                    $order->setCurrency($lineItem['tax_class']);
-                                }
-                            }
-                            $order
-                                ->setId($wpOrder->id)
-                                ->setDate(new \DateTime($wpOrder->order_date))
-                                ->setItemCount($count)
-                                ->setTotal($total, $tax);
-                            $coupons = $wpOrder->get_used_coupons();
-                            if (!empty($coupons)) {
-                                $order->setCoupon($coupons[0]);
-                            }
-                            $invoice->addOrder($order);
-                        }
-                    }
-                    $invoices[] = $invoice;
-                }
-            }
-            $presenter = new BatchInvoicePresenter($merchant, $invoices);
-            wp_send_json($presenter->toArray());
-        } catch (GenericException $e) {
-            self::$app['logger']->error($e);
-            wp_send_json(array());
-        }
     }
 
     /**

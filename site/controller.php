@@ -89,10 +89,10 @@ class ExpresslyController extends JControllerLegacy
                     $this->migratecomplete($data['uuid']);
                     break;
                 case BatchCustomer::getName():
-                    ExpresslyHelper::batchCustomer();
+                    $this->batchCustomer();
                     break;
                 case BatchInvoice::getName():
-                    ExpresslyHelper::batchInvoice();
+                    $this->batchInvoice();
                     break;
             }
         }
@@ -242,5 +242,101 @@ class ExpresslyController extends JControllerLegacy
         }
 
         JFactory::getApplication()->redirect('/');
+    }
+
+    /**
+     *
+     */
+    public function batchCustomer()
+    {
+        $json = file_get_contents('php://input');
+        $json = json_decode($json);
+
+        $users = array();
+
+        try {
+            if (!property_exists($json, 'emails')) {
+                throw new GenericException('Invalid JSON request');
+            }
+            foreach ($json->emails as $email) {
+                if (null !== ExpresslyHelper::get_user_by_email($email)) {
+                    $users['existing'][] = $email;
+                }
+            }
+            $presenter = new \Expressly\Presenter\BatchCustomerPresenter($users);
+            ExpresslyHelper::send_json($presenter->toArray());
+        } catch (GenericException $e) {
+            $this->app['logger']->error($e);
+            ExpresslyHelper::send_json(array());
+        }
+    }
+
+    /**
+     *
+     */
+    public function batchInvoice()
+    {
+        $json = file_get_contents('php://input');
+        $json = json_decode($json);
+
+        $invoices = array();
+
+        try {
+            if (!property_exists($json, 'customers')) {
+                throw new \Expressly\Exception\GenericException('Invalid JSON request');
+            }
+
+            foreach ($json->customers as $customer) {
+
+                if (!property_exists($customer, 'email')) {
+                    continue;
+                }
+
+                $user = ExpresslyHelper::get_user_by_email($customer->email);
+
+                if (null !== $user) {
+
+                    $vmOrders = VmModel::getModel('orders')->getOrdersList($user->id);
+
+                    $invoice = new \Expressly\Entity\Invoice();
+                    $invoice->setEmail($customer->email);
+
+                    foreach ($vmOrders as $vmOrder) {
+
+                        $vmOrderDetails = VmModel::getModel('orders')->getOrder($vmOrder->virtuemart_order_id);
+
+                        if ($vmOrderDetails['details']['BT']->created_on > $customer->from && $vmOrderDetails['details']['BT']->created_on < $customer->to) {
+                            $total = $vmOrderDetails['details']['BT']->order_subtotal;
+                            $tax = $vmOrderDetails['details']['BT']->order_tax;
+                            $count = count($vmOrderDetails['items']);
+                            $order = new \Expressly\Entity\Order();
+                            /*foreach ($wpOrder->get_items('line_item') as $lineItem) {
+                                $count++;
+                                if ($lineItem->tax_class) {
+                                    $order->setCurrency($lineItem['tax_class']);
+                                }
+                            }*/
+                            $order
+                                ->setId($vmOrderDetails['details']['BT']->virtuemart_order_id)
+                                ->setDate(new \DateTime($vmOrderDetails['details']['BT']->created_on))
+                                ->setItemCount($count)
+                                ->setTotal($total, $tax);
+                            /*$coupons = $wpOrder->get_used_coupons();
+                            if (!empty($coupons)) {
+                                $order->setCoupon($coupons[0]);
+                            }*/
+                            $invoice->addOrder($order);
+                        }
+                    }
+
+                    $invoices[] = $invoice;
+                }
+            }
+            $presenter = new \Expressly\Presenter\BatchInvoicePresenter($invoices);
+            ExpresslyHelper::send_json($presenter->toArray());
+        } catch (\Expressly\Exception\GenericException $e) {
+            $this->app['logger']->error($e);
+            ExpresslyHelper::send_json(array());
+        }
     }
 }
