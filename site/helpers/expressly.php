@@ -56,57 +56,79 @@ abstract class ExpresslyHelper
             // get joomla user
             $user = self::get_user_by_email($emailAddr);
 
-            // TODO: Need to load virtuemart specific fields (first_name, last_name, etc)
-
             if (null !== $user) {
 
-                throw new \Exception('Missed required data');
+                $customer = new \Expressly\Entity\Customer();
 
-                /*$customer = new \Expressly\Entity\Customer();
-                $customer
-                    ->setFirstName($user->first_name)
-                    ->setLastName($user->last_name);
                 $email = new \Expressly\Entity\Email();
                 $email
                     ->setEmail($emailAddr)
                     ->setAlias('primary');
+
                 $customer->addEmail($email);
-                $user_id =& $user->ID;
-                $countryCodeProvider = self::$app['country_code.provider'];
-                $createAddress = function ($prefix) use ($user_id, $countryCodeProvider, $customer) {
-                    $address = new Address();
+
+                if (!empty($user->id)) {
+                    $userInfo_ids = JFactory::getDBO()
+                        ->setQuery('SELECT `virtuemart_userinfo_id` FROM `#__virtuemart_userinfos` WHERE `virtuemart_user_id` = "' . intval($user->id) . '" ORDER BY `address_type` ASC')
+                        ->loadColumn(0);
+                } else {
+                    $userInfo_ids  = array();
+                }
+
+                foreach ($userInfo_ids as $uid) {
+
+                    $userInfo = VmTable::getInstance('userinfos', 'Table', array('dbo' => JFactory::getDbo()));
+                    $userInfo->load($uid);
+
+                    if ('BT' == $userInfo->address_type) {
+                        $customer
+                            ->setFirstName($userInfo->first_name)
+                            ->setLastName($userInfo->last_name);
+                    }
+
+                    $address = new \Expressly\Entity\Address();
                     $address
-                        ->setFirstName(get_user_meta($user_id, $prefix . '_first_name', true))
-                        ->setLastName(get_user_meta($user_id, $prefix . '_last_name', true))
-                        ->setAddress1(get_user_meta($user_id, $prefix . '_address_1', true))
-                        ->setAddress2(get_user_meta($user_id, $prefix . '_address_2', true))
-                        ->setCity(get_user_meta($user_id, $prefix . '_city', true))
-                        ->setZip(get_user_meta($user_id, $prefix . '_postcode', true));
-                    $iso3 = $countryCodeProvider->getIso3(get_user_meta($user_id, $prefix . '_country', true));
-                    $address->setCountry($iso3);
-                    $address->setStateProvince(get_user_meta($user_id, $prefix . '_state', true));
-                    $phoneNumber = get_user_meta($user_id, $prefix . '_phone', true);
-                    if (!empty($phoneNumber)) {
+                        ->setFirstName($userInfo->first_name)
+                        ->setLastName($userInfo->last_name)
+                        ->setAddress1($userInfo->address_1)
+                        ->setAddress2($userInfo->address_2)
+                        ->setCity($userInfo->city)
+                        ->setZip($userInfo->zip);
+
+                    $address->setCountry(self::get_country_iso3_by_id($userInfo->virtuemart_country_id));
+                    $address->setStateProvince(self::get_state_name_by_id($userInfo->virtuemart_state_id));
+
+                    if (!empty($userInfo->phone_1)) {
                         $phone = new \Expressly\Entity\Phone();
                         $phone
                             ->setType(\Expressly\Entity\Phone::PHONE_TYPE_HOME)
-                            ->setNumber((string)$phoneNumber);
+                            ->setNumber(strval($userInfo->phone_1));
                         $customer->addPhone($phone);
-                        $address->setPhonePosition((int)$customer->getPhoneIndex($phone));
+
+                        $address->setPhonePosition(intval($customer->getPhoneIndex($phone)));
                     }
-                    return $address;
-                };
-                $billingAddress = $createAddress('billing');
-                $shippingAddress = $createAddress('shipping');
-                if (Address::compare($billingAddress, $shippingAddress)) {
-                    $customer->addAddress($billingAddress, true, Address::ADDRESS_BOTH);
-                } else {
-                    $customer->addAddress($billingAddress, true, Address::ADDRESS_BILLING);
-                    $customer->addAddress($shippingAddress, true, Address::ADDRESS_SHIPPING);
+
+                    if (!empty($userInfo->phone_2)) {
+                        $phone = new \Expressly\Entity\Phone();
+                        $phone
+                            ->setType(\Expressly\Entity\Phone::PHONE_TYPE_MOBILE)
+                            ->setNumber(strval($userInfo->phone_2));
+                        $customer->addPhone($phone);
+
+                        if (empty($userInfo->phone_1))
+                            $address->setPhonePosition(intval($customer->getPhoneIndex($phone)));
+                    }
+
+                    $customer->addAddress($address, true, (('BT' == $userInfo->address_type)
+                        ? \Expressly\Entity\Address::ADDRESS_BILLING
+                        : \Expressly\Entity\Address::ADDRESS_SHIPPING
+                    ));
                 }
+
                 $merchant = self::$app['merchant.provider']->getMerchant();
-                $response = new \Expressly\Presenter\CustomerMigratePresenter($merchant, $customer, $emailAddr, $user->ID);
-                self::send_json($response->toArray());*/
+                $response = new \Expressly\Presenter\CustomerMigratePresenter($merchant, $customer, $emailAddr, $user->id);
+
+                self::send_json($response->toArray());
             }
         } catch (\Exception $e) {
             self::$app['logger']->error(ExceptionFormatter::format($e));
@@ -156,4 +178,21 @@ abstract class ExpresslyHelper
         return implode('', $message);
     }
 
+    public static function get_country_iso3_by_id($country_id)
+    {
+        $result = JFactory::getDBO()
+            ->setQuery('SELECT `country_3_code` FROM `#__virtuemart_countries` WHERE virtuemart_country_id = "' . intval($country_id) . '"')
+            ->loadColumn(0);
+
+        return $result[0];
+    }
+
+    public static function get_state_name_by_id($state_id)
+    {
+        $result = JFactory::getDBO()
+            ->setQuery('SELECT `state_name` FROM `#__virtuemart_states` WHERE virtuemart_state_id = "' . intval($state_id) . '"')
+            ->loadColumn(0);
+
+        return $result[0];
+    }
 }
