@@ -178,6 +178,10 @@ abstract class ExpresslyHelper
         return implode('', $message);
     }
 
+    /**
+     * @param $country_id
+     * @return mixed
+     */
     public static function get_country_iso3_by_id($country_id)
     {
         $result = JFactory::getDBO()
@@ -187,10 +191,40 @@ abstract class ExpresslyHelper
         return $result[0];
     }
 
+    /**
+     * @param $iso2
+     * @return mixed
+     */
+    public static function get_country_id_by_iso2($iso2)
+    {
+        $result = JFactory::getDBO()
+            ->setQuery('SELECT `virtuemart_country_id` FROM `#__virtuemart_countries` WHERE country_2_code = "' . strval($iso2) . '"')
+            ->loadColumn(0);
+
+        return $result[0];
+    }
+
+    /**
+     * @param $state_id
+     * @return mixed
+     */
     public static function get_state_name_by_id($state_id)
     {
         $result = JFactory::getDBO()
             ->setQuery('SELECT `state_name` FROM `#__virtuemart_states` WHERE virtuemart_state_id = "' . intval($state_id) . '"')
+            ->loadColumn(0);
+
+        return $result[0];
+    }
+
+    /**
+     * @param $state_name
+     * @return mixed
+     */
+    public static function get_state_id_by_name($state_name)
+    {
+        $result = JFactory::getDBO()
+            ->setQuery('SELECT `virtuemart_state_id` FROM `#__virtuemart_states` WHERE `state_name` LIKE "' . strval($state_name) . '"')
             ->loadColumn(0);
 
         return $result[0];

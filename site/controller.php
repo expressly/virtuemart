@@ -156,54 +156,33 @@ class ExpresslyController extends JControllerLegacy
 
                 $customer = $json['migration']['data']['customerData'];
 
-                $model = JModelLegacy::getInstance('Registration', 'UsersModel', array('ignore_request' => true));
-                $model->register([
+                $model   = JModelLegacy::getInstance('Registration', 'UsersModel', array('ignore_request' => true));
+                $user_id = $model->register([
                     'name'      => $customer['firstName'] . ' ' . $customer['lastName'],
                     'username'  => 'user'.time().rand(1000, 9999),
                     'email1'    => $email,
                     'password1' => JUserHelper::genRandomPassword(),
                 ]);
 
-                /*
-
-                // Set the role
-                $user = new WP_User($user_id);
-                $user->set_role('customer');
-
-                $countryCodeProvider = $this->app['country_code.provider'];
-
-                $addAddress = function ($address, $prefix) use ($customer, $user_id, $countryCodeProvider) {
-                    $phone = isset($address['phone']) ?
-                        (!empty($customer['phones'][$address['phone']]) ? $customer['phones'][$address['phone']] : null) : null;
-                    update_user_meta($user_id, $prefix . '_first_name', $address['firstName']);
-                    update_user_meta($user_id, $prefix . '_last_name', $address['lastName']);
-                    if (!empty($address['address1'])) {
-                        update_user_meta($user_id, $prefix . '_address_1', $address['address1']);
-                    }
-                    if (!empty($address['address2'])) {
-                        update_user_meta($user_id, $prefix . '_address_2', $address['address2']);
-                    }
-                    update_user_meta($user_id, $prefix . '_city', $address['city']);
-                    update_user_meta($user_id, $prefix . '_postcode', $address['zip']);
-                    if (!empty($phone)) {
-                        update_user_meta($user_id, $prefix . '_phone', $phone['number']);
-                    }
-                    $iso2 = $countryCodeProvider->getIso2($address['country']);
-                    update_user_meta($user_id, $prefix . '_state', $address['stateProvince']);
-                    update_user_meta($user_id, $prefix . '_country', $iso2);
-                };
-
                 if (isset($customer['billingAddress'])) {
-                    $addAddress($customer['addresses'][$customer['billingAddress']], 'billing');
+                    $userInfo = VmTable::getInstance('userinfos', 'Table', array('dbo' => JFactory::getDbo()));
+                    $userInfo->bindChecknStore(array_merge(array(
+                        'virtuemart_userinfo_id' => 0,
+                        'virtuemart_user_id'     => $user_id,
+                        'address_type'           => 'BT',
+                    ), $this->parse_address($customer['addresses'][$customer['billingAddress']], $customer)));
                 }
 
                 if (isset($customer['shippingAddress'])) {
-                    $addAddress($customer['addresses'][$customer['shippingAddress']], 'shipping');
+                    $userInfo = VmTable::getInstance('userinfos', 'Table', array('dbo' => JFactory::getDbo()));
+                    $userInfo->bindChecknStore(array_merge(array(
+                        'virtuemart_userinfo_id' => 0,
+                        'virtuemart_user_id'     => $user_id,
+                        'address_type'           => 'ST',
+                    ), $this->parse_address($customer['addresses'][$customer['shippingAddress']], $customer)));
                 }
 
-                // Dispatch password creation email
-                wp_mail($email, 'Welcome!', 'Your Password: ' . $password);
-
+                /*
                 // Forcefully log user in
                 wp_set_auth_cookie($user_id);
 
@@ -242,6 +221,38 @@ class ExpresslyController extends JControllerLegacy
         }
 
         JFactory::getApplication()->redirect('/');
+    }
+
+    /**
+     * @param $address
+     * @param $customer
+     */
+    protected function parse_address($address, &$customer)
+    {
+        $data = array();
+
+        $phone = isset($address['phone']) ?
+            (!empty($customer['phones'][$address['phone']]) ? $customer['phones'][$address['phone']] : null) : null;
+
+        $data['first_name'] = $address['firstName'];
+        $data['last_name']  = $address['lastName'];
+
+        if (!empty($address['address1']))
+            $data['address_1'] = $address['address1'];
+
+        if (!empty($address['address2']))
+            $data['address_2'] = $address['address2'];
+
+        $data['city'] = $address['city'];
+        $data['zip']  = $address['zip'];
+
+        if (!empty($phone))
+            $data['phone_1'] = $phone['number'];
+
+        $data['virtuemart_state_id']   = ExpresslyHelper::get_state_id_by_name($address['stateProvince']);
+        $data['virtuemart_country_id'] = ExpresslyHelper::get_country_id_by_iso2($address['country']);
+
+        return $data;
     }
 
     /**
