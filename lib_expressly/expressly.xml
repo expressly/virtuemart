@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="library" version="3.x" method="upgrade">
+    <name>Expressly (library)</name>
+    <creationDate>November 11, 2015</creationDate>
+    <author>Expressly Team</author>
+    <authorEmail>info@expressly.com</authorEmail>
+    <authorUrl>http://buyexpressly.com</authorUrl>
+    <copyright>BuyExpressly(c)</copyright>
+    <version>0.1.0</version>
+    <description>Library for Expressly Integration</description>
+
+    <libraryname>expressly</libraryname>
+
+    <files>
+        <folder>vendor</folder>
+        <file>ExpresslyMerchantProvider.php</file>
+    </files>
+</extension>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" version="3.x" group="system" method="upgrade">
+    <name>System - Expressly</name>
+    <creationDate>November 11, 2015</creationDate>
+    <author>Expressly Team</author>
+    <authorEmail>info@expressly.com</authorEmail>
+    <authorUrl>http://buyexpressly.com</authorUrl>
+    <copyright>BuyExpressly(c)</copyright>
+    <version>0.1.0</version>
+    <description>Plugin to register/include library for Expressly Integration</description>
+
+    <scriptfile>script.php</scriptfile>
+
+    <files>
+        <filename plugin="expressly">expressly.php</filename>
+        <filename>index.html</filename>
+    </files>
+</extension>

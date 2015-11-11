@@ -8,7 +8,7 @@
         }
     ],
     "config": {
-      "vendor-dir": "admin/libraries/expressly/vendor"
+      "vendor-dir": "lib_expressly/expressly/vendor"
     },
     "require": {
         "expressly/php-common": "2.2.2"

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="module" version="3.x" client="site" method="upgrade">
+    <name>Expressly - Banner</name>
+    <creationDate>November 11, 2015</creationDate>
+    <author>Expressly Team</author>
+    <authorEmail>info@expressly.com</authorEmail>
+    <authorUrl>http://buyexpressly.com</authorUrl>
+    <copyright>BuyExpressly(c)</copyright>
+    <version>0.1.0</version>
+    <description>Module implementing "banner feature" for Expressly Integration</description>
+
+    <files>
+        <filename module="mod_expressly_banner">mod_expressly_banner.php</filename>
+        <filename>index.html</filename>
+    </files>
+</extension>
