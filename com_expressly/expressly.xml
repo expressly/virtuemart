@@ -31,7 +31,6 @@
             <filename>expressly.php</filename>
             <filename>index.html</filename>
             <folder>install</folder>
-            <folder>libraries</folder>
             <folder>sql</folder>
             <folder>views</folder>
         </files>

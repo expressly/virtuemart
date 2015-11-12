@@ -15,7 +15,9 @@ if (!class_exists ('VmConfig')) {
 
 VmConfig::loadConfig();
 
-use Expressly\Entity\MerchantType;
+use Expressly\Entity\MerchantType,
+    Expressly\Event\PasswordedEvent,
+    Expressly\Subscriber\MerchantSubscriber;
 
 /**
  * General Controller of Expressly component
@@ -71,13 +73,11 @@ class ExpresslyController extends JControllerLegacy
         // Check for request forgeries
         JSession::checkToken() or jexit(JText::_('JInvalid_Token'));
 
-        // REGISTER
-
         $merchant = $this->app['merchant.provider']->getMerchant(true);
-        $event    = new \Expressly\Event\PasswordedEvent($merchant);
+        $event    = new PasswordedEvent($merchant);
 
         try {
-            $this->app['dispatcher']->dispatch(\Expressly\Subscriber\MerchantSubscriber::MERCHANT_REGISTER, $event);
+            $this->app['dispatcher']->dispatch(MerchantSubscriber::MERCHANT_REGISTER, $event);
             if (!$event->isSuccessful()) {
                 throw new \Expressly\Exception\InvalidAPIKeyException($this->error_formatter($event));
             }

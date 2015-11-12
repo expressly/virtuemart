@@ -19,6 +19,7 @@ class plgSystemExpresslyInstallerScript
             ->update('#__extensions')
             ->set($db->quoteName('enabled') . ' = 1')
             ->where($db->quoteName('element') . ' = ' . $db->quote('expressly'))
+            ->where($db->quoteName('folder') . ' = ' . $db->quote('system'))
             ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'));
 
         $db->setQuery($query);

@@ -112,18 +112,19 @@ class ExpresslyController extends JControllerLegacy
             if (!$event->isSuccessful()) {
                 throw new \Expressly\Exception\GenericException(ExpresslyHelper::error_formatter($event));
             }
+
+            $session = JFactory::getSession();
+            $session->set('__xly', array(
+                'action' => 'popup',
+                'uuid'   => $uuid,
+                'popup'  => $event->getContent(),
+            ));
+
         } catch (\Exception $e) {
             $this->app['logger']->error(\Expressly\Exception\ExceptionFormatter::format($e));
-            JFactory::getApplication()->redirect('/');
         }
 
-        $view = $this->getView('expressly', 'html');
-        $view->setProperties([
-            'uuid'  => $uuid,
-            'popup' => $event->getContent(),
-        ]);
-
-        $view->display();
+        JFactory::getApplication()->redirect('/');
     }
 
     /**
@@ -207,17 +208,10 @@ class ExpresslyController extends JControllerLegacy
         }
 
         if ($exists) {
-
-            $view = $this->getView('expressly', 'html');
-            $view->setLayout('exists');
-            $view->setProperties([
-                'uuid'  => $uuid,
-                'popup' => $event->getContent(),
-            ]);
-
-            $view->display();
-
-            return;
+            $session = JFactory::getSession();
+            $session->set('__xly', array(
+                'action' => 'exists',
+            ));
         }
 
         JFactory::getApplication()->redirect('/');
