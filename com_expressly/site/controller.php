@@ -284,16 +284,33 @@ class ExpresslyController extends JControllerLegacy
                 $exists = true;
                 $event = new \Expressly\Event\CustomerMigrateEvent($merchant, $uuid, \Expressly\Event\CustomerMigrateEvent::EXISTING_CUSTOMER);
             }
-            // Add items (product/coupon) to cart
-            /*if (!empty($json['cart'])) {
-                WC()->cart->empty_cart();
+
+            // *************************************
+            // * Add items (product/coupon) to cart
+            // *************************************
+            if (!empty($json['cart'])) {
+
+                if (!class_exists('VirtueMartCart'))
+                    require_once(JPATH_VM_SITE . DS . 'helpers' . DS . 'cart.php');
+
+                $cart = VirtueMartCart::getCart();
+
                 if (!empty($json['cart']['productId'])) {
-                    WC()->cart->add_to_cart($json['cart']['productId'], 1);
+                    $cartProductsData = array();
+                    $cartProductsData[intval($json['cart']['productId'])] = array(
+                        'virtuemart_product_id' => intval($json['cart']['productId']),
+                        'quantity'              => 1,
+                    );
+                    $cart->cartProductsData = $cartProductsData;
                 }
+
                 if (!empty($json['cart']['couponCode'])) {
-                    WC()->cart->add_discount(sanitize_text_field($json['cart']['couponCode']));
+                    $cart->setCouponCode(strval($json['cart']['couponCode']));
                 }
-            }*/
+
+                $cart->setCartIntoSession();
+
+            }
             $this->app['dispatcher']->dispatch(\Expressly\Subscriber\CustomerMigrationSubscriber::CUSTOMER_MIGRATE_SUCCESS, $event);
         } catch (\Exception $e) {
             $this->app['logger']->error(\Expressly\Exception\ExceptionFormatter::format($e));
