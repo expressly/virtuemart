@@ -420,26 +420,25 @@ class ExpresslyController extends JControllerLegacy
                         $vmOrderDetails = VmModel::getModel('orders')->getOrder($vmOrder->virtuemart_order_id);
 
                         if ($vmOrderDetails['details']['BT']->created_on > $customer->from && $vmOrderDetails['details']['BT']->created_on < $customer->to) {
+
+                            // TODO: Need to review this values
                             $total = $vmOrderDetails['details']['BT']->order_subtotal;
-                            $tax = $vmOrderDetails['details']['BT']->order_tax;
+                            $tax   = $vmOrderDetails['details']['BT']->order_tax;
+                            // ====
                             $count = count($vmOrderDetails['items']);
                             $order = new \Expressly\Entity\Order();
-                            /*foreach ($wpOrder->get_items('line_item') as $lineItem) {
-                                $count++;
-                                if ($lineItem->tax_class) {
-                                    $order->setCurrency($lineItem['tax_class']);
-                                }
-                            }*/
                             $order
                                 ->setId($vmOrderDetails['details']['BT']->virtuemart_order_id)
                                 ->setDate(new \DateTime($vmOrderDetails['details']['BT']->created_on))
                                 ->setItemCount($count)
                                 ->setTotal($total, $tax);
-                            /*$coupons = $wpOrder->get_used_coupons();
-                            if (!empty($coupons)) {
-                                $order->setCoupon($coupons[0]);
-                            }*/
+
+                            if (!empty($vmOrderDetails['details']['BT']->coupon_code)) {
+                                $order->setCoupon($vmOrderDetails['details']['BT']->coupon_code);
+                            }
+
                             $invoice->addOrder($order);
+
                         }
                     }
 
