@@ -69,16 +69,13 @@ class ExpresslyController extends JControllerLegacy
 
         if ($route instanceof \Expressly\Entity\Route) {
 
-            // Set $app for helper methods
-            ExpresslyHelper::setApp($this->app);
-
             switch ($route->getName()) {
                 case Ping::getName():
-                    ExpresslyHelper::ping();
+                    $this->ping();
                     break;
                 case UserData::getName():
                     $data = $route->getData();
-                    ExpresslyHelper::retrieveUserByEmail($data['email']);
+                    $this->retrieveUserByEmail($data['email']);
                     break;
                 case CampaignPopup::getName():
                     $data = $route->getData();
@@ -95,6 +92,104 @@ class ExpresslyController extends JControllerLegacy
                     $this->batchInvoice();
                     break;
             }
+        }
+    }
+
+    /**
+     *
+     */
+    private function ping()
+    {
+        $presenter = new \Expressly\Presenter\PingPresenter();
+        ExpresslyHelper::send_json($presenter->toArray());
+    }
+
+    /**
+     *
+     */
+    private function retrieveUserByEmail($emailAddr)
+    {
+        try {
+            // get joomla user
+            $user = ExpresslyHelper::get_user_by_email($emailAddr);
+
+            if (null !== $user) {
+
+                $customer = new \Expressly\Entity\Customer();
+
+                $email = new \Expressly\Entity\Email();
+                $email
+                    ->setEmail($emailAddr)
+                    ->setAlias('primary');
+
+                $customer->addEmail($email);
+
+                if (!empty($user->id)) {
+                    $userInfo_ids = JFactory::getDBO()
+                        ->setQuery('SELECT `virtuemart_userinfo_id` FROM `#__virtuemart_userinfos` WHERE `virtuemart_user_id` = "' . intval($user->id) . '" ORDER BY `address_type` ASC')
+                        ->loadColumn(0);
+                } else {
+                    $userInfo_ids  = array();
+                }
+
+                foreach ($userInfo_ids as $uid) {
+
+                    $userInfo = VmTable::getInstance('userinfos', 'Table', array('dbo' => JFactory::getDbo()));
+                    $userInfo->load($uid);
+
+                    if ('BT' == $userInfo->address_type) {
+                        $customer
+                            ->setFirstName($userInfo->first_name)
+                            ->setLastName($userInfo->last_name);
+                    }
+
+                    $address = new \Expressly\Entity\Address();
+                    $address
+                        ->setFirstName($userInfo->first_name)
+                        ->setLastName($userInfo->last_name)
+                        ->setAddress1($userInfo->address_1)
+                        ->setAddress2($userInfo->address_2)
+                        ->setCity($userInfo->city)
+                        ->setZip($userInfo->zip);
+
+                    $address->setCountry(ExpresslyHelper::get_country_iso3_by_id($userInfo->virtuemart_country_id));
+                    $address->setStateProvince(ExpresslyHelper::get_state_name_by_id($userInfo->virtuemart_state_id));
+
+                    if (!empty($userInfo->phone_1)) {
+                        $phone = new \Expressly\Entity\Phone();
+                        $phone
+                            ->setType(\Expressly\Entity\Phone::PHONE_TYPE_HOME)
+                            ->setNumber(strval($userInfo->phone_1));
+                        $customer->addPhone($phone);
+
+                        $address->setPhonePosition(intval($customer->getPhoneIndex($phone)));
+                    }
+
+                    if (!empty($userInfo->phone_2)) {
+                        $phone = new \Expressly\Entity\Phone();
+                        $phone
+                            ->setType(\Expressly\Entity\Phone::PHONE_TYPE_MOBILE)
+                            ->setNumber(strval($userInfo->phone_2));
+                        $customer->addPhone($phone);
+
+                        if (empty($userInfo->phone_1))
+                            $address->setPhonePosition(intval($customer->getPhoneIndex($phone)));
+                    }
+
+                    $customer->addAddress($address, true, (('BT' == $userInfo->address_type)
+                        ? \Expressly\Entity\Address::ADDRESS_BILLING
+                        : \Expressly\Entity\Address::ADDRESS_SHIPPING
+                    ));
+                }
+
+                $merchant = $this->app['merchant.provider']->getMerchant();
+                $response = new \Expressly\Presenter\CustomerMigratePresenter($merchant, $customer, $emailAddr, $user->id);
+
+                ExpresslyHelper::send_json($response->toArray());
+            }
+        } catch (\Exception $e) {
+            $this->app['logger']->error(ExceptionFormatter::format($e));
+            ExpresslyHelper::send_json([]);
         }
     }
 
@@ -183,11 +278,8 @@ class ExpresslyController extends JControllerLegacy
                     ), $this->parse_address($customer['addresses'][$customer['shippingAddress']], $customer)));
                 }
 
-                /*
-                // Forcefully log user in
-                wp_set_auth_cookie($user_id);
+                // TODO: Need to do programmatically authorize here (if some way exists for Joomla!)
 
-                */
             } else {
                 $exists = true;
                 $event = new \Expressly\Event\CustomerMigrateEvent($merchant, $uuid, \Expressly\Event\CustomerMigrateEvent::EXISTING_CUSTOMER);
