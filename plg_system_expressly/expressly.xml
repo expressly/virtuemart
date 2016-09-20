@@ -6,7 +6,7 @@
     <authorEmail>info@expressly.com</authorEmail>
     <authorUrl>http://buyexpressly.com</authorUrl>
     <copyright>BuyExpressly(c)</copyright>
-    <version>0.1.0</version>
+    <version>2.3.20</version>
     <description>Plugin to register/include library for Expressly Integration</description>
 
     <scriptfile>script.php</scriptfile>

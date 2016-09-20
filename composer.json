@@ -11,7 +11,7 @@
       "vendor-dir": "lib_expressly/vendor"
     },
     "require": {
-        "expressly/php-common": "~2.3-stable"
+        "expressly/php-common": "2.3.20"
     },
     "repositories": [
         {
